@@ -16,7 +16,9 @@ public class CameraControl : MonoBehaviour
     float distanceFromAnchor;
     float targetDistanceFromAnchor;
     float targetDistanceFromAnchorLastFollow;
+    [SerializeField]
     float minDistance = 0.5f;
+    [SerializeField]
     float maxDistance = 8f;
     float distanceChangeVelocity;
 

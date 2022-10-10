@@ -1,9 +1,16 @@
 ﻿using Dummiesman;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
+using Unity.Entities.UniversalDelegates;
 using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.Rendering;
+using Random = UnityEngine.Random;
 
-public class MTLLoader {
+public class MTLLoader : MonoBehaviour {
     public List<string> SearchPaths = new List<string>() { "%FileName%_Textures", string.Empty};
 
     private FileInfo _objFileInfo = null;
@@ -28,6 +35,7 @@ public class MTLLoader {
             if (File.Exists(filePath))
             {
                 var tex = ImageLoader.LoadTexture(filePath);
+
 
                 if(isNormalMap)
                     tex = ImageUtils.ConvertToNormalMap(tex);
@@ -118,6 +126,84 @@ public class MTLLoader {
     /// </summary>
     /// <param name="input">The input stream from the MTL file</param>
     /// <returns>Dictionary containing loaded materials</returns>
+    /// 
+
+    Texture2D KdTexture;
+    public IEnumerator LoadTextures(string url)
+    {
+        UnityWebRequest wr = new UnityWebRequest(url);
+        DownloadHandlerTexture texDl = new DownloadHandlerTexture(true);
+        wr.downloadHandler = texDl;
+        yield return wr.SendWebRequest();
+
+        if (wr.result == UnityWebRequest.Result.Success)
+        {
+            Texture2D t = texDl.texture;
+            //Sprite s = Sprite.Create(t, new Rect(0, 0, t.width, t.height),
+            //    Vector2.zero, 1f);
+            KdTexture = t;
+        }
+    }
+
+    public async void LoadTexturesAsync(string url, string textureName)
+    {
+        
+        //swap directory seperator char
+        url = url.Replace('\\', Path.DirectorySeparatorChar);
+        url = url.Replace('/', Path.DirectorySeparatorChar);
+        
+        print("Async started: " + url);
+
+        if (File.Exists(url))
+        {
+            //UnityWebRequest wr = new UnityWebRequest(url);
+            //DownloadHandlerTexture texDl = new DownloadHandlerTexture(true);
+            //wr.downloadHandler = texDl;
+            //await wr.SendWebRequest();
+
+            var www = UnityWebRequestTexture.GetTexture(url);
+            await www.SendWebRequest();
+         
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                var texture2D = DownloadHandlerTexture.GetContent(www);
+
+                SaveTexture(texture2D, textureName);
+
+                var loadedTexture2D = (Texture2D)Resources.Load("Textures/" + textureName, typeof(Texture2D));
+
+                ObjFromStream.instance.loadedTextures.Add(loadedTexture2D);
+
+                if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
+                    ObjFromStream.instance.loadedObj[0].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[0].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[0]);
+                else
+                    ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[ObjFromStream.instance.loadedTextures.Count - 1]);
+            }
+        }
+        print("Async ended");
+    }
+
+
+    private void SaveTexture(Texture2D texture, string textureName)
+    {
+        byte[] bytes = texture.EncodeToJPG();
+        var dirPath = Application.dataPath + "/Resources/Textures";
+        if (!Directory.Exists(dirPath))
+        {
+            Directory.CreateDirectory(dirPath);
+        }
+
+        string texturePath = dirPath + "/" + textureName + ".jpg";
+
+        File.WriteAllBytes(texturePath, bytes);
+        Debug.Log(bytes.Length / 1024 + "Kb was saved as: " + dirPath);
+        
+#if UNITY_EDITOR
+        UnityEditor.AssetDatabase.Refresh();
+#endif
+    }
+
+    string materialName;
     public Dictionary<string, Material> Load(Stream input)
     {
         var inputReader = new StreamReader(input);
@@ -141,10 +227,12 @@ public class MTLLoader {
             //newmtl
             if (splitLine[0] == "newmtl")
             {
-                string materialName = processedLine.Substring(7);
+                materialName = processedLine.Substring(7);
 
                 //var newMtl = new Material(Shader.Find("Standard (Specular setup)")) { name = materialName };
-                var newMtl = new Material(ObjFromStream.instance.masterShader) { name = materialName };
+                //var newMtl = new Material(ObjFromStreamNew.instance.masterShader) { name = materialName };
+                //var newMtl = new Material(ObjFromStreamNew.instance.masterMaterial) { name = materialName };
+                var newMtl = new Material(ObjFromStream.instance.masterMaterial) { name = materialName };
                 mtlDict[materialName] = newMtl;
                 currentMaterial = newMtl;
 
@@ -173,105 +261,11 @@ public class MTLLoader {
                 {
                     continue; //invalid args or sth
                 }
-
-                var KdTexture = TryLoadTexture(texturePath);
-                //currentMaterial.SetTexture("_MainTex", KdTexture);
-                currentMaterial.SetTexture("_BaseColorMap", KdTexture);
-
-                //set transparent mode if the texture has transparency
-                if(KdTexture != null && (KdTexture.format == TextureFormat.DXT5 || KdTexture.format == TextureFormat.ARGB32))
-                {
-                    OBJLoaderHelper.EnableMaterialTransparency(currentMaterial);
-                }
-
-                //flip texture if this is a dds
-                if(Path.GetExtension(texturePath).ToLower() == ".dds")
-                {
-                    currentMaterial.mainTextureScale = new Vector2(1f, -1f);
-                }
-
-                continue;
-            }
-
-            //bump map
-            if (splitLine[0] == "map_Bump" || splitLine[0] == "map_bump")
-            {
-                string texturePath = GetTexPathFromMapStatement(processedLine, splitLine);
-                if(texturePath == null)
-                {
-                    continue; //invalid args or sth
-                }
-
-                var bumpTexture = TryLoadTexture(texturePath, true);
-                float bumpScale = GetArgValue(splitLine, "-bm", 1.0f);
-
-                if (bumpTexture != null) {
-                    currentMaterial.SetTexture("_BumpMap", bumpTexture);
-                    currentMaterial.SetFloat("_BumpScale", bumpScale);
-                    currentMaterial.EnableKeyword("_NORMALMAP");
-                }
-
-                continue;
-            }
-
-            //specular color
-            if (splitLine[0] == "Ks" || splitLine[0] == "ks")
-            {
-                currentMaterial.SetColor("_SpecColor", OBJLoaderHelper.ColorFromStrArray(splitLine));
-                continue;
-            }
-
-            //emission color
-            if (splitLine[0] == "Ka" || splitLine[0] == "ka")
-            {
-                currentMaterial.SetColor("_EmissionColor", OBJLoaderHelper.ColorFromStrArray(splitLine, 0.05f));
-                currentMaterial.EnableKeyword("_EMISSION");
-                continue;
-            }
-
-            //emission map
-            if (splitLine[0] == "map_Ka" || splitLine[0] == "map_ka")
-            {
-                string texturePath = GetTexPathFromMapStatement(processedLine, splitLine);
-                if(texturePath == null)
-                {
-                    continue; //invalid args or sth
-                }
-
-                currentMaterial.SetTexture("_EmissionMap", TryLoadTexture(texturePath));
-                continue;
-            }
-
-            //alpha
-            if (splitLine[0] == "d" || splitLine[0] == "Tr")
-            {
-                float visibility = OBJLoaderHelper.FastFloatParse(splitLine[1]);
                 
-                //tr statement is just d inverted
-                if(splitLine[0] == "Tr")
-                    visibility = 1f - visibility;  
-
-                if(visibility < (1f - Mathf.Epsilon))
-                {
-                    var currentColor = currentMaterial.GetColor("_Color");
-
-                    currentColor.a = visibility;
-                    currentMaterial.SetColor("_Color", currentColor);
-
-                    OBJLoaderHelper.EnableMaterialTransparency(currentMaterial);
-                }
+                LoadTexturesAsync(texturePath, materialName);
                 continue;
-            }
-
-            //glossiness
-            if (splitLine[0] == "Ns" || splitLine[0] == "ns")
-            {
-                float Ns = OBJLoaderHelper.FastFloatParse(splitLine[1]);
-                Ns = (Ns / 1000f);
-                currentMaterial.SetFloat("_Glossiness", Ns);
             }
         }
-
         //return our dict
         return mtlDict;
     }
@@ -281,7 +275,7 @@ public class MTLLoader {
     /// </summary>
     /// <param name="path">The path to the MTL file</param>
     /// <returns>Dictionary containing loaded materials</returns>
-	public Dictionary<string, Material> Load(string path)
+    public Dictionary<string, Material> Load(string path)
     {
         _objFileInfo = new FileInfo(path); //get file info
         SearchPaths.Add(_objFileInfo.Directory.FullName); //add root path to search dir

@@ -3,20 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 
 public class ObjFromStream : MonoBehaviour
 {
     public Shader masterShader;
-
-    //[SerializeField]
-    //Texture texture;
-
+    public Material masterMaterial;
     public static ObjFromStream instance;
     public List<GameObject> loadedObj;
+    public List<Texture2D> loadedTextures;
     public GameObject ParentObject;
-    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_0.3_decimation - Temp/";
+    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_0.3_decimation - Temp";
 
     private void Awake()
     {
@@ -30,6 +29,22 @@ public class ObjFromStream : MonoBehaviour
     {
         StartCoroutine(GetRequest());
     }
+
+    //private void OnDisable()
+    //{
+    //    if (System.IO.File.Exists(path))
+    //    {
+    //        if (AssetDatabase.DeleteAsset(path))
+    //            print("deleted");
+    //        else
+    //            Debug.LogError(string.Format("Can not deleted '{0}'. Unknown error.", path));
+
+    //    }
+    //    else
+    //    {
+    //        Debug.LogError(string.Format("Can not deleted '{0}'. File does not exist.", path));
+    //    }
+    //}
 
     void LoadObjsFromDirectory()
     {
