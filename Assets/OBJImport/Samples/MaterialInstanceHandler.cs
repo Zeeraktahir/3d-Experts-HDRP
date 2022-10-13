@@ -22,6 +22,6 @@ public class MaterialInstanceHandler : MonoBehaviour
     {
         instanceMaterial = material;
         instanceMaterial.mainTexture = texture;
-        ConvertGOToEntity();
+        //ConvertGOToEntity();
     }
 }

@@ -121,29 +121,20 @@ public class MTLLoader : MonoBehaviour {
         return texturePath;
     }
 
-    /// <summary>
-    /// Loads a *.mtl file
-    /// </summary>
-    /// <param name="input">The input stream from the MTL file</param>
-    /// <returns>Dictionary containing loaded materials</returns>
-    /// 
+    //Texture2D KdTexture;
+    //public IEnumerator LoadTextures(string url)
+    //{
+    //    UnityWebRequest wr = new UnityWebRequest(url);
+    //    DownloadHandlerTexture texDl = new DownloadHandlerTexture(true);
+    //    wr.downloadHandler = texDl;
+    //    yield return wr.SendWebRequest();
 
-    Texture2D KdTexture;
-    public IEnumerator LoadTextures(string url)
-    {
-        UnityWebRequest wr = new UnityWebRequest(url);
-        DownloadHandlerTexture texDl = new DownloadHandlerTexture(true);
-        wr.downloadHandler = texDl;
-        yield return wr.SendWebRequest();
-
-        if (wr.result == UnityWebRequest.Result.Success)
-        {
-            Texture2D t = texDl.texture;
-            //Sprite s = Sprite.Create(t, new Rect(0, 0, t.width, t.height),
-            //    Vector2.zero, 1f);
-            KdTexture = t;
-        }
-    }
+    //    if (wr.result == UnityWebRequest.Result.Success)
+    //    {
+    //        Texture2D t = texDl.texture;
+    //        KdTexture = t;
+    //    }
+    //}
 
     public async void LoadTexturesAsync(string url, string textureName)
     {
@@ -156,11 +147,6 @@ public class MTLLoader : MonoBehaviour {
 
         if (File.Exists(url))
         {
-            //UnityWebRequest wr = new UnityWebRequest(url);
-            //DownloadHandlerTexture texDl = new DownloadHandlerTexture(true);
-            //wr.downloadHandler = texDl;
-            //await wr.SendWebRequest();
-
             var www = UnityWebRequestTexture.GetTexture(url);
             await www.SendWebRequest();
          
@@ -169,15 +155,6 @@ public class MTLLoader : MonoBehaviour {
                 var texture2D = DownloadHandlerTexture.GetContent(www);
 
                 SaveTexture(texture2D, textureName);
-
-                var loadedTexture2D = (Texture2D)Resources.Load("Textures/" + textureName, typeof(Texture2D));
-
-                ObjFromStream.instance.loadedTextures.Add(loadedTexture2D);
-
-                if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
-                    ObjFromStream.instance.loadedObj[0].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[0].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[0]);
-                else
-                    ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[ObjFromStream.instance.loadedTextures.Count - 1]);
             }
         }
         print("Async ended");
@@ -197,7 +174,18 @@ public class MTLLoader : MonoBehaviour {
 
         File.WriteAllBytes(texturePath, bytes);
         Debug.Log(bytes.Length / 1024 + "Kb was saved as: " + dirPath);
-        
+
+
+        var loadedTexture2D = (Texture2D)Resources.Load("Textures/" + textureName, typeof(Texture2D));
+
+        ObjFromStream.instance.loadedTextures.Add(loadedTexture2D);
+
+        if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
+            ObjFromStream.instance.loadedObj[0].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[0].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[0]);
+        else
+            ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[ObjFromStream.instance.loadedTextures.Count - 1]);
+
+
 #if UNITY_EDITOR
         UnityEditor.AssetDatabase.Refresh();
 #endif

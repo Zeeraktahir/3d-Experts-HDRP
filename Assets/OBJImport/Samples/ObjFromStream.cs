@@ -3,9 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Unity.Scenes;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 
 public class ObjFromStream : MonoBehaviour
 {
@@ -15,7 +17,7 @@ public class ObjFromStream : MonoBehaviour
     public List<GameObject> loadedObj;
     public List<Texture2D> loadedTextures;
     public GameObject ParentObject;
-    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_0.3_decimation - Temp";
+    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_decimation - 10%";
 
     private void Awake()
     {
@@ -48,7 +50,6 @@ public class ObjFromStream : MonoBehaviour
 
     void LoadObjsFromDirectory()
     {
-        //string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Meshes/Heater";
         var info = new DirectoryInfo(file_path);
         var fileInfoObjs = info.GetFiles("*.obj");
         var fileInfoMtls = info.GetFiles("*.mtl");
