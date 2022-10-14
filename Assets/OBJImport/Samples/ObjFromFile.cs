@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class ObjFromFile : MonoBehaviour
 {
-    string objPath = string.Empty;
+    string objPath = "D://InvoZone//3D-Expert";
     string error = string.Empty;
     
     [SerializeField]

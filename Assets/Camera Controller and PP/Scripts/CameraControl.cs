@@ -1,8 +1,22 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using UnityEngine;
+
+/// <summary>
+/// A simple free camera to be added to a Unity game object.
+/// 
+/// Keys:
+///	wasd / arrows	- movement
+///	q/e 			- up/down (local space)
+///	hold shift		- enable fast movement mode
+///	right mouse  	- enable free look
+///	mouse			- free look / rotation
 
 public class CameraControl : MonoBehaviour
 {
+<<<<<<< Updated upstream
     bool controlEnabled;
 
     public Transform anchor;
@@ -58,145 +72,110 @@ public class CameraControl : MonoBehaviour
     {
         if (!anchor)
             return;
+=======
+  
+    public float movementSpeed = 10f;
+>>>>>>> Stashed changes
 
-        var offsetFromTarget = transform.localPosition - anchor.position;
-        initialDistanceFromAnchor = offsetFromTarget.magnitude;
-        targetDistanceFromAnchor = initialDistanceFromAnchor;
-        distanceFromAnchor = initialDistanceFromAnchor;
+    public float fastMovementSpeed = 100f;
 
-        pedestal = transform.position.y;
 
-        attachedCamera = GetComponent<Camera>();
-    }
+    public float freeLookSensitivity = 3f;
 
-    private void LateUpdate()
+
+    public float zoomSensitivity = 10f;
+
+    public float fastZoomSensitivity = 50f;
+
+  
+    private bool looking = false;
+
+    void Update()
     {
-        if (!anchor)
-            return;
+        var fastMode = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        var movementSpeed = fastMode ? fastMovementSpeed : this.movementSpeed;
 
-        if (controlEnabled)
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
         {
-            HandleInput();
-        }
-        else
-        {
-            FollowTarget();
-        }
-        UpdateValues();
-
-        var offsetRotation = Quaternion.Euler(orientation);
-        var offsetFromAnchorNormalized = Vector3.back;
-        transform.position = (offsetRotation * offsetFromAnchorNormalized * distanceFromAnchor) + (Vector3.up * pedestal) + anchor.position;
-        transform.rotation = offsetRotation * orientationOffset;
-
-        if (farClipPlaneTrimming)
-        {
-            attachedCamera.farClipPlane = distanceFromAnchor + farClipPlaneMinimum;
-        }
-    }
-
-    void HandleInput()
-    {
-        var windowSize = new Vector2(Screen.width, Screen.height);
-        var windowAspect = windowSize.x / windowSize.y;
-
-        var mousePos = Input.mousePosition;
-        var mouseDelta = (Vector2)(mousePos - previousMousePos);
-        previousMousePos = mousePos;
-
-        const float testedScalingFactor = 0.1f;
-        const float testedWindowHeight = 1080.0f;
-
-        mouseDelta.x = (mouseDelta.x / Screen.width) * windowAspect;
-        mouseDelta.y = mouseDelta.y / Screen.height;
-        mouseDelta *= (testedScalingFactor * testedWindowHeight);
-
-        if (Input.GetMouseButtonDown(orientationControlButton) || Input.GetMouseButtonDown(pedestalControlButton))
-        {
-            mouseDelta = Vector2.zero;
+            transform.position = transform.position + (-transform.right * movementSpeed * Time.deltaTime);
         }
 
-        if (Input.GetMouseButton(orientationControlButton))
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
         {
-            orientationTarget += new Vector2(-mouseDelta.y, mouseDelta.x) * orientationSensitivity;
-
-            orientationTarget.x = Mathf.Repeat(orientationTarget.x + 180f, 360f) - 180f;
-            orientationTarget.x = Mathf.Clamp(orientationTarget.x, -orientationVerticalFreedom, orientationVerticalFreedom);
-
-            orientationTarget.y = Mathf.Repeat(orientationTarget.y + 180f, 360f) - 180f;
+            transform.position = transform.position + (transform.right * movementSpeed * Time.deltaTime);
         }
 
-        if (Input.GetMouseButton(pedestalControlButton))
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
         {
-            pedestalTarget -= mouseDelta.y * pedestalSensitivity * distanceFromAnchor / maxDistance;
-            pedestalTarget = Mathf.Clamp(pedestalTarget, pedestalFreedom.x, pedestalFreedom.y);
-
-            targetDistanceFromAnchor -= mouseDelta.x * distanceFromAnchor * Time.deltaTime * (1f + targetDistanceFromAnchor) * zoomDragSensitivity;
+            transform.position = transform.position + (transform.forward * movementSpeed * Time.deltaTime);
         }
-        
-        targetDistanceFromAnchor -= Input.mouseScrollDelta.y * distanceFromAnchor * Time.deltaTime * Mathf.Pow(Mathf.Abs(targetDistanceFromAnchor), 0.7f) * zoomScrollSensitivity;
-        targetDistanceFromAnchor = Mathf.Clamp(targetDistanceFromAnchor, minDistance, maxDistance);
-    }
 
-    void UpdateValues()
-    {
-        //var smoothTimeMultiplierUncontrolled = 2f * (1f - Mathf.Clamp01((Time.time - timeOfTargetAttachment) / timeToSnapToTarget));
-        //var smoothTimeMultiplier = controlEnabled ? 1f : smoothTimeMultiplierUncontrolled;
-
-        var smoothTimeMultiplier = controlEnabled ? 1f : 2f;
-        smoothTimeMultiplier *= 1f - Mathf.Clamp01((Time.time - timeOfTargetAttachment) / timeToSnapToTarget);
-
-        var normalizedTargetDistanceFromAnchor = Mathf.Clamp01((targetDistanceFromAnchor - minDistance) / (maxDistance - minDistance));
-        var pedestalFreedomClamp = (pedestalFreedom.x + pedestalFreedom.y) * normalizedTargetDistanceFromAnchor;
-        const float clampCenter = 0.5f;
-        var clampedPedestalTarget = Mathf.Clamp(pedestalTarget, pedestalFreedom.x + pedestalFreedomClamp * clampCenter, pedestalFreedom.y - pedestalFreedomClamp * (1f - clampCenter));
-
-        if (smoothTimeMultiplier > 0f)
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
         {
-            pedestal = Mathf.SmoothDamp(pedestal, clampedPedestalTarget, ref pedestalChangeVelocity, pedestalAndDistanceChangeDuration * smoothTimeMultiplier, float.MaxValue, DeltaTime);
-            orientation.x = Mathf.SmoothDampAngle(orientation.x, orientationTarget.x, ref orientationChangeVelocity.x, orientationChangeDuration * smoothTimeMultiplier, float.MaxValue, DeltaTime);
-            orientation.y = Mathf.SmoothDampAngle(orientation.y, orientationTarget.y, ref orientationChangeVelocity.y, orientationChangeDuration * smoothTimeMultiplier, float.MaxValue, DeltaTime);
-
-            distanceFromAnchor = Mathf.SmoothDamp(distanceFromAnchor, targetDistanceFromAnchor, ref distanceChangeVelocity, pedestalAndDistanceChangeDuration * smoothTimeMultiplier, float.MaxValue, DeltaTime);
-
-            orientationOffset = Quaternion.RotateTowards(orientationOffset, targetOrientationOffset, Time.deltaTime * 60f);
+            transform.position = transform.position + (-transform.forward * movementSpeed * Time.deltaTime);
         }
-        else
+
+        if (Input.GetKey(KeyCode.Q))
         {
-            pedestal = clampedPedestalTarget;
-            orientation = orientationTarget;
-            distanceFromAnchor = targetDistanceFromAnchor;
-            orientationOffset = targetOrientationOffset;
+            transform.position = transform.position + (transform.up * movementSpeed * Time.deltaTime);
+        }
+
+        if (Input.GetKey(KeyCode.E))
+        {
+            transform.position = transform.position + (-transform.up * movementSpeed * Time.deltaTime);
+        }
+
+        if (Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.PageUp))
+        {
+            transform.position = transform.position + (Vector3.up * movementSpeed * Time.deltaTime);
+        }
+
+        if (Input.GetKey(KeyCode.F) || Input.GetKey(KeyCode.PageDown))
+        {
+            transform.position = transform.position + (-Vector3.up * movementSpeed * Time.deltaTime);
+        }
+
+        if (looking)
+        {
+            float newRotationX = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * freeLookSensitivity;
+            float newRotationY = transform.localEulerAngles.x - Input.GetAxis("Mouse Y") * freeLookSensitivity;
+            transform.localEulerAngles = new Vector3(newRotationY, newRotationX, 0f);
+        }
+
+        float axis = Input.GetAxis("Mouse ScrollWheel");
+        if (axis != 0)
+        {
+            var zoomSensitivity = fastMode ? this.fastZoomSensitivity : this.zoomSensitivity;
+            transform.position = transform.position + transform.forward * axis * zoomSensitivity;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Mouse1))
+        {
+            StartLooking();
+        }
+        else if (Input.GetKeyUp(KeyCode.Mouse1))
+        {
+            StopLooking();
         }
     }
 
-    public void ControlEnable()
+    void OnDisable()
     {
-        controlEnabled = true;
-        target = null;
-        targetOrientationOffset = Quaternion.identity;
+        StopLooking();
     }
 
-    public void AttachToTarget(Transform newTarget)
+
+    public void StartLooking()
     {
-        controlEnabled = false;
-        target = newTarget;
-        timeOfTargetAttachment = Time.time;
+        looking = true;
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
-    void FollowTarget()
+    public void StopLooking()
     {
-        if (!target)
-            return;
-
-        orientationTarget = Quaternion.LookRotation(target.forward).eulerAngles;
-
-        targetOrientationOffset = Quaternion.Inverse(Quaternion.Euler(orientationTarget)) * target.rotation;
-
-        targetDistanceFromAnchor = (Vector3.Cross(anchor.position - target.position, Vector3.up)).magnitude;
-        targetDistanceFromAnchorLastFollow = targetDistanceFromAnchor;
-
-        pedestalTarget = (Quaternion.Euler(orientationTarget) * Vector3.forward * targetDistanceFromAnchor).y + target.position.y;
-        pedestalTargetLastFollow = pedestalTarget;
+        looking = false;
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
     }
 }
