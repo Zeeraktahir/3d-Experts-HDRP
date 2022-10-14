@@ -8,16 +8,28 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
 
 public class ObjFromStream : MonoBehaviour
 {
-    public Shader masterShader;
+    [SerializeField]
+    TMP_InputField objPathInputfield;
+
     public Material masterMaterial;
     public static ObjFromStream instance;
     public List<GameObject> loadedObj;
     public List<Texture2D> loadedTextures;
     public GameObject ParentObject;
-    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_decimation - 10%";
+    public bool demoPurpose;
+
+    public int currentTextureNum;
+    public int totalTextures;
+
+    string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Meshes/Industrial/Fin_Fan_Lidar+photo Decimated 10%";
+    //string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Fin_Fan_Lidar+photo under 1M polys";
+    //string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3 500k polys";
+    //string file_path = "E:/Invozone/Invozone Projects/3D experts streaming project/Blender Projects/Ulco_Model_3_decimation - 10%";
 
     private void Awake()
     {
@@ -30,6 +42,13 @@ public class ObjFromStream : MonoBehaviour
     private void Start()
     {
         StartCoroutine(GetRequest());
+    }
+
+    public void LoadObjButton()
+    {
+        //file_path = objPathInputfield.textComponent.text;
+        //print(file_path);
+        //StartCoroutine(GetRequest());
     }
 
     //private void OnDisable()
@@ -74,12 +93,19 @@ public class ObjFromStream : MonoBehaviour
         }
     }
 
+    public void CallCoroutine(MTLLoader mTLLoader, Texture2D texture2D, string textureName)
+    {
+        StartCoroutine(mTLLoader.SaveTexture(texture2D, textureName));
+    }
+
     IEnumerator GetRequest()
     {
+        print(file_path);
         var info = new DirectoryInfo(file_path);
         var fileInfoObjs = info.GetFiles("*.obj");
         var fileInfoMtls = info.GetFiles("*.mtl");
         int i = 0;
+        totalTextures = fileInfoMtls.Length;
         foreach (FileInfo file in fileInfoObjs)
         {
             using (UnityWebRequest webRequest = UnityWebRequest.Get(file.ToString()))
@@ -113,18 +139,21 @@ public class ObjFromStream : MonoBehaviour
                                 Debug.Log("Mtl not found");
                                 loadedObj.Add(new OBJLoader().Load(textStreamObj));
                                 loadedObj[i].transform.parent = ParentObject.transform;
+                                //yield return new WaitForSeconds(2f);
                                 break;
                             case UnityWebRequest.Result.Success:
                                 Debug.Log("Mtl found");
                                 var textStreamMtl = new MemoryStream(Encoding.UTF8.GetBytes(webRequestMtl.downloadHandler.text));
                                 loadedObj.Add(new OBJLoader().Load(textStreamObj, textStreamMtl));
                                 loadedObj[i].transform.parent = ParentObject.transform;
+                                //yield return new WaitForSeconds(2f);
                                 break;
                         }
                         break;
                 }
             }
             i++;
+            currentTextureNum = i;
         }
     }
 

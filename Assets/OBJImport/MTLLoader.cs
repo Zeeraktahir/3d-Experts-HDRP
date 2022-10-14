@@ -154,14 +154,27 @@ public class MTLLoader : MonoBehaviour {
             {
                 var texture2D = DownloadHandlerTexture.GetContent(www);
 
-                SaveTexture(texture2D, textureName);
+                if (ObjFromStream.instance.demoPurpose)
+                {
+                    ObjFromStream.instance.loadedTextures.Add(texture2D);
+
+                    if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
+                        ObjFromStream.instance.loadedObj[0].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[0].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[0]);
+                    else
+                        ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[ObjFromStream.instance.loadedTextures.Count - 1]);
+                }
+                else
+                {
+                    ObjFromStream.instance.CallCoroutine(this, texture2D, textureName);
+                    //StartCoroutine(SaveTexture(texture2D, textureName));
+                }
             }
         }
         print("Async ended");
     }
 
 
-    private void SaveTexture(Texture2D texture, string textureName)
+    public IEnumerator SaveTexture(Texture2D texture, string textureName)
     {
         byte[] bytes = texture.EncodeToJPG();
         var dirPath = Application.dataPath + "/Resources/Textures";
@@ -175,9 +188,9 @@ public class MTLLoader : MonoBehaviour {
         File.WriteAllBytes(texturePath, bytes);
         Debug.Log(bytes.Length / 1024 + "Kb was saved as: " + dirPath);
 
-
+        //yield return new WaitForSeconds(1f);
         var loadedTexture2D = (Texture2D)Resources.Load("Textures/" + textureName, typeof(Texture2D));
-
+        yield return new WaitForSeconds(0f);
         ObjFromStream.instance.loadedTextures.Add(loadedTexture2D);
 
         if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
@@ -217,9 +230,6 @@ public class MTLLoader : MonoBehaviour {
             {
                 materialName = processedLine.Substring(7);
 
-                //var newMtl = new Material(Shader.Find("Standard (Specular setup)")) { name = materialName };
-                //var newMtl = new Material(ObjFromStreamNew.instance.masterShader) { name = materialName };
-                //var newMtl = new Material(ObjFromStreamNew.instance.masterMaterial) { name = materialName };
                 var newMtl = new Material(ObjFromStream.instance.masterMaterial) { name = materialName };
                 mtlDict[materialName] = newMtl;
                 currentMaterial = newMtl;
