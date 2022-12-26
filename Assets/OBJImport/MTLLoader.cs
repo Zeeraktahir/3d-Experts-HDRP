@@ -1,14 +1,15 @@
 ﻿using Dummiesman;
-using System;
+//using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using Unity.Entities.UniversalDelegates;
+//using System.Threading.Tasks;
+//using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.Networking;
-using UnityEngine.Rendering;
-using Random = UnityEngine.Random;
+//using UnityEngine.Rendering;
+//using static TreeEditor.TextureAtlas;
+//using Random = UnityEngine.Random;
 
 public class MTLLoader : MonoBehaviour {
     public List<string> SearchPaths = new List<string>() { "%FileName%_Textures", string.Empty};
@@ -138,18 +139,18 @@ public class MTLLoader : MonoBehaviour {
 
     public async void LoadTexturesAsync(string url, string textureName)
     {
-        
+
         //swap directory seperator char
         url = url.Replace('\\', Path.DirectorySeparatorChar);
         url = url.Replace('/', Path.DirectorySeparatorChar);
-        
+
         print("Async started: " + url);
 
         if (File.Exists(url))
         {
             var www = UnityWebRequestTexture.GetTexture(url);
             await www.SendWebRequest();
-         
+
             if (www.result == UnityWebRequest.Result.Success)
             {
                 var texture2D = DownloadHandlerTexture.GetContent(www);
@@ -173,6 +174,47 @@ public class MTLLoader : MonoBehaviour {
         print("Async ended");
     }
 
+    //public IEnumerator LoadTexturesAsync(string url, string textureName)
+    //{
+
+    //    //swap directory seperator char
+    //    url = url.Replace('\\', Path.DirectorySeparatorChar);
+    //    url = url.Replace('/', Path.DirectorySeparatorChar);
+
+    //    print("Async started: " + url);
+
+    //    if (File.Exists(url))
+    //    {
+    //        var www = UnityWebRequestTexture.GetTexture(url);
+    //        yield return www.SendWebRequest();
+
+    //        if (www.result == UnityWebRequest.Result.Success)
+    //        {
+    //            var texture2D = DownloadHandlerTexture.GetContent(www);
+
+    //            if (ObjFromStream.instance.demoPurpose)
+    //            {
+    //                ObjFromStream.instance.loadedTextures.Add(texture2D);
+
+    //                if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
+    //                    ObjFromStream.instance.loadedObj[0].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[0].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[0]);
+    //                else
+    //                    ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).gameObject.AddComponent<MaterialInstanceHandler>().AssignMatAndTexture(ObjFromStream.instance.loadedObj[ObjFromStream.instance.loadedTextures.Count - 1].transform.GetChild(0).GetComponent<MeshRenderer>().material, ObjFromStream.instance.loadedTextures[ObjFromStream.instance.loadedTextures.Count - 1]);
+    //            }
+    //            else
+    //            {
+    //                ObjFromStream.instance.CallCoroutine(this, texture2D, textureName);
+    //                //StartCoroutine(SaveTexture(texture2D, textureName));
+    //            }
+    //        }
+    //    }
+    //    else
+    //    {
+    //        print("Texture file does not exists");
+    //    }
+    //    print("Async ended");
+    //}
+
 
     public IEnumerator SaveTexture(Texture2D texture, string textureName)
     {
@@ -188,9 +230,9 @@ public class MTLLoader : MonoBehaviour {
         File.WriteAllBytes(texturePath, bytes);
         Debug.Log(bytes.Length / 1024 + "Kb was saved as: " + dirPath);
 
-        //yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(1f);
         var loadedTexture2D = (Texture2D)Resources.Load("Textures/" + textureName, typeof(Texture2D));
-        yield return new WaitForSeconds(0f);
+        yield return new WaitForSeconds(1f);
         ObjFromStream.instance.loadedTextures.Add(loadedTexture2D);
 
         if (ObjFromStream.instance.loadedTextures.Count - 1 < 0)
@@ -204,7 +246,7 @@ public class MTLLoader : MonoBehaviour {
 #endif
     }
 
-    string materialName;
+    string textureName;
     public Dictionary<string, Material> Load(Stream input)
     {
         var inputReader = new StreamReader(input);
@@ -228,10 +270,10 @@ public class MTLLoader : MonoBehaviour {
             //newmtl
             if (splitLine[0] == "newmtl")
             {
-                materialName = processedLine.Substring(7);
+                textureName = processedLine.Substring(7);
 
-                var newMtl = new Material(ObjFromStream.instance.masterMaterial) { name = materialName };
-                mtlDict[materialName] = newMtl;
+                var newMtl = new Material(ObjFromStream.instance.masterMaterial) { name = textureName };
+                mtlDict[textureName] = newMtl;
                 currentMaterial = newMtl;
 
                 continue;
@@ -259,8 +301,10 @@ public class MTLLoader : MonoBehaviour {
                 {
                     continue; //invalid args or sth
                 }
-                
-                LoadTexturesAsync(texturePath, materialName);
+                Debug.Log("texturePath: " + texturePath);
+                Debug.Log("textureName: " + textureName);
+                //ObjFromStream.instance.CallCoroutine2(this, ObjFromStream.instance.file_path + "/" + texturePath, textureName);
+                LoadTexturesAsync(ObjFromStream.instance.file_path + "/" + texturePath, textureName);
                 continue;
             }
         }
